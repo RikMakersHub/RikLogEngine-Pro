@@ -79,7 +79,7 @@ public class LogParserEngine {
         long latency = endTime - startTime;
         int healthIndex = totalLines > 0 ? Math.max(0, Math.min(100, ((totalLines - errorCount) * 100) / totalLines)) : 100;
 
-        // Export data to raw structured JSON format without bulky dependencies
+        // Export data to raw structured JSON format with proper array formatting
         try (PrintWriter writer = new PrintWriter(new FileWriter(outputFilePath))) {
             writer.println("{");
             writer.println("  \"totalLines\": " + totalLines + ",");
@@ -91,10 +91,12 @@ public class LogParserEngine {
             int index = 0;
             for (ClusterMeta meta : clusters.values()) {
                 writer.println("    {");
-                writer.println("      \"severity\": \"" + meta.severity + "\",");
+                writer.println("      \"severity\": \"\"" + meta.severity + "\",");
                 writer.println("      \"count\": " + meta.count + ",");
                 writer.println("      \"pattern\": \"" + escapeJson(meta.template) + "\"");
-                System.out.print(++index == clusters.size() ? "    }\n" : "    },\n");
+                
+                // FIXED: Now accurately writes to the json file stream instead of system terminal console
+                writer.print(++index == clusters.size() ? "    }\n" : "    },\n");
             }
             writer.println("  ]");
             writer.println("}");
