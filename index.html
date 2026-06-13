@@ -31,6 +31,7 @@
             background-color: var(--bg-card);
             cursor: pointer;
             margin-bottom: 2rem;
+            transition: border-color 0.2s, background-color 0.2s;
         }
         #drop-zone.hover { border-color: var(--accent-blue); background-color: #1f242c; }
         #drop-zone p { font-size: 1.1rem; color: #fff; margin-bottom: 0.5rem; }
@@ -112,42 +113,56 @@
         dropZone.addEventListener('click', () => fileInput.click());
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('hover'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hover'));
-        dropZone.addEventListener('drop', (e) => { e.preventDefault(); renderData(e.dataTransfer.files[0]); });
-        fileInput.addEventListener('change', (e) => { renderData(e.target.files[0]); });
+        dropZone.addEventListener('drop', (e) => { 
+            e.preventDefault(); 
+            dropZone.classList.remove('hover');
+            if (e.dataTransfer.files.length > 0) {
+                renderData(e.dataTransfer.files[0]); // Extracted correctly
+            }
+        });
+        fileInput.addEventListener('change', (e) => { 
+            if (e.target.files.length > 0) {
+                renderData(e.target.files[0]); // Extracted correctly
+            }
+        });
 
-        function renderData(file) {
-            if (!file) return;
+        function renderData(fileObject) {
+            if (!fileObject) return;
             const reader = new FileReader();
             reader.onload = function(e) {
-                const data = JSON.parse(e.target.result);
-                
-                document.getElementById('stat-lines').textContent = data.totalLines.toLocaleString();
-                document.getElementById('stat-latency').textContent = `${data.latencyMs}ms`;
-                document.getElementById('stat-clusters').textContent = data.uniqueClusters;
-                document.getElementById('stat-health').textContent = `${data.healthIndex}%`;
-
-                const hColor = data.healthIndex < 75 ? 'var(--accent-red)' : data.healthIndex < 95 ? 'var(--accent-yellow)' : 'var(--accent-green)';
-                document.getElementById('stat-health').style.color = hColor;
-
-                const tbody = document.getElementById('table-body');
-                tbody.innerHTML = '';
-
-                data.clusters.sort((a,b) => b.count - a.count).forEach(item => {
-                    const tr = document.createElement('tr');
-                    const badgeClass = item.severity === 'ERROR' ? 'badge-error' : item.severity === 'WARN' ? 'badge-warn' : 'badge-info';
+                try {
+                    const data = JSON.parse(e.target.result);
                     
-                    tr.innerHTML = `
-                        <td><span class="badge ${badgeClass}">${item.severity}</span></td>
-                        <td><strong style="color:#fff; font-family:monospace;">${item.count}x</strong></td>
-                        <td><div class="pattern-text">${escapeHtml(item.pattern)}</div></td>
-                    `;
-                    tbody.appendChild(tr);
-                });
+                    document.getElementById('stat-lines').textContent = data.totalLines.toLocaleString();
+                    document.getElementById('stat-latency').textContent = `${data.latencyMs}ms`;
+                    document.getElementById('stat-clusters').textContent = data.uniqueClusters;
+                    document.getElementById('stat-health').textContent = `${data.healthIndex}%`;
 
-                dropZone.classList.add('hidden');
-                dashboard.classList.remove('hidden');
+                    const hColor = data.healthIndex < 75 ? 'var(--accent-red)' : data.healthIndex < 95 ? 'var(--accent-yellow)' : 'var(--accent-green)';
+                    document.getElementById('stat-health').style.color = hColor;
+
+                    const tbody = document.getElementById('table-body');
+                    tbody.innerHTML = '';
+
+                    data.clusters.sort((a,b) => b.count - a.count).forEach(item => {
+                        const tr = document.createElement('tr');
+                        const badgeClass = item.severity === 'ERROR' ? 'badge-error' : item.severity === 'WARN' ? 'badge-warn' : 'badge-info';
+                        
+                        tr.innerHTML = `
+                            <td><span class="badge ${badgeClass}">${item.severity}</span></td>
+                            <td><strong style="color:#fff; font-family:monospace;">${item.count}x</strong></td>
+                            <td><div class="pattern-text">${escapeHtml(item.pattern)}</div></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+
+                    dropZone.classList.add('hidden');
+                    dashboard.classList.remove('hidden');
+                } catch (err) {
+                    alert("Error parsing JSON file. Make sure it is a valid summary.json output generated by your Java engine.");
+                }
             };
-            reader.readAsText(file);
+            reader.readAsText(fileObject);
         }
 
         function escapeHtml(str) {
